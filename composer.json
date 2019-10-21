@@ -1,0 +1,14 @@
+{
+    "name": "dol-lab/secure-file",
+    "type": "wordpress-plugin",
+    "description": "Add file security to a WordPress Multisite Network.",
+    "keywords": ["Privacy", "Private", "Deny Access", "WordPress","Network", "Visibility", "Files"],
+    "homepage": "https://github.com/dol-lab/secure-file",
+    "license": "GNU-2.0-or-later",
+    "authors": [
+        {
+            "name": "Vitus Schuhwerk",
+            "homepage": "https://github.com/schuhwerk"
+        }
+    ]
+}
