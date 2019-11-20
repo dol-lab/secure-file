@@ -17,6 +17,8 @@
  *
  * To better understand the code here check file naming conventions:
  * @see https://stackoverflow.com/questions/2235173/file-name-path-name-base-name-naming-standard-for-pieces-of-a-path
+ * @todo
+ * @todo: add filter sanitize_file_name to not allow filenames with multiple dots: preg_replace( '/\.+/', '.', $new_filename );
  */
 
 /** Delete all secure-file cookies from the client on logout */
@@ -37,7 +39,7 @@ add_action( 'wp_logout', 'sfile_delete_all_cookies' );
 function sfile_activate_plugin() {
 	require_once 'includes/sfile-install-checks.php';
 
-	$msg   = [];
+	$msg   = array();
 	$msg[] = sfile_check_wp();
 	$msg[] = sfile_check_php();
 	$msg[] = sfile_check_config();
@@ -60,3 +62,16 @@ function sfile_activate_plugin() {
 
 }
 register_activation_hook( __FILE__, 'sfile_activate_plugin' );
+
+add_filter( 'sanitize_file_name', 'sfile_strip_consecutive_dots_in_filename' );
+
+/**
+ * When a user uploads a file with the name "f..oo...txt" consecutive dots are reduced to one ("f.oo.txt").
+ * This prevents errors as SFile_Manager - Class strips ".." to prevent accessing parent directories.
+ *
+ * @param string $filename The name of the uploaded file.
+ * @return string
+ */
+function sfile_strip_consecutive_dots_in_filename( $filename ) {
+	return preg_replace( '/\.+/', '.', $filename );
+}
