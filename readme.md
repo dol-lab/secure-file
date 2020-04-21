@@ -12,7 +12,7 @@ The basic idea is to give every user a key (via. cookies) for a specific folder 
 
 ## Setup
 
-You first need to direct file requests to php eather via nginx of apache (depending on the server software you are using).(Check out [the config](https://github.com/dol-lab/trellis/blob/master/nginx-includes/all/secure-file.conf.j2) for [trellis](https://roots.io/trellis/)).
+You first need to direct file requests to php either via nginx of apache (depending on the server software you are using).(Check out [the config](https://github.com/dol-lab/trellis/blob/master/nginx-includes/all/secure-file.conf.j2) for [trellis](https://roots.io/trellis/)).
 
 **Nginx** in /etc/nginx/sites-available/spaces.conf:
 
@@ -94,7 +94,7 @@ function my_file_security( $args, $file_url, $is_logged_in, $current_user ) {
  * Review it, try to hack it! :)
  * Automatically write a random salt to file on installation (via.[WP-Api](https://api.wordpress.org/secret-key/1.1/salt/))
  * Write a test to check if things work. Run it after the installation.
- * Writa a performance tests (widh [siege](http://www.joedog.org/siege-home)?).
+ * Write performance tests (widh [siege](http://www.joedog.org/siege-home)?).
 
 
 ## Questions
