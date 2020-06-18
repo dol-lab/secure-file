@@ -5,6 +5,12 @@ Wordpress does not normally restrict the access to files (it did, a very long ti
 The basic idea is to give every user a key (via. cookies) for a specific folder in the uploads directory, which is valid for a certain time. This way we don't have to load the whole WordPress environment for each file request, but just check the key (and give it to a user if she or he is allowed to access). WP saves files in a path like /uploads/BLOG_ID/YEAR/MONTH/... So you can limit by blog ids or by a year, a month, ...
 
 
+ℹ WordPress handles uploads for the main_site( blog_id = 1) differently than every other blog.
+Instead of putting uploads in `uploads/sites/1/year/...` it puts them direcly in the uploads folder like `uploads/year/...`
+
+🚨 This plugin changes the upload path of newly uploaded files in the main_site. You might want to move them to a single place.
+
+
 ## Prerequisites
 
 * PHP > 5.3 (hash sha)
