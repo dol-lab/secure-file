@@ -12,7 +12,7 @@
  * @return void
  */
 function sfile_activate_plugin() {
-	require_once 'includes/sfile-install-checks.php';
+	require_once 'sfile-install-checks.php';
 
 	$msg   = array();
 	$msg[] = sfile_check_wp();
@@ -39,8 +39,8 @@ function sfile_activate_plugin() {
 
 /** Delete all secure-file cookies from the client on logout */
 function sfile_delete_all_cookies() {
-	require_once 'includes/class-sfile-logger.php';
-	require_once 'includes/class-sfile-cookie.php';
+	require_once 'class-sfile-logger.php';
+	require_once 'class-sfile-cookie.php';
 	$cookie = new SFile_Cookie( '', array() );
 	$cookie->remove_all_file_cookies();
 }
@@ -58,13 +58,13 @@ function sfile_strip_consecutive_dots_in_filename( $filename ) {
 
 /**
  * Triggered by the filter upload_dir.
- * 
+ *
  * This is basically a copy of the _wp_upload_dir function.
- * 
+ *
  * This handles an issue with WordPress where it handles uploads for the main_site( blog_id = 1)
  * differently than every other blog. instead of putting uploads in uploads/sites/1/year/...
  * it puts them direyly in the uploads folder like uploads/year/...
- * 
+ *
  * As we manage access via upload path we don't want this...
  *
  * @param array $uploads {
