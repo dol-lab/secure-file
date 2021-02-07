@@ -6,10 +6,9 @@ The basic idea is to give every user a key (via. cookies) for a specific folder 
 
 
 ℹ WordPress handles uploads for the main_site( blog_id = 1) differently than every other blog.
-Instead of putting uploads in `uploads/sites/1/year/...` it puts them direcly in the uploads folder like `uploads/year/...`
+Instead of putting uploads in `uploads/sites/1/year/...` it puts them directly in the uploads folder like `uploads/year/...`
 
-🚨 This plugin changes the upload path of newly uploaded files in the main_site. You might want to move them to a single place.
-
+🚨 This plugin changes the upload path of newly uploaded files in the main_site (to a subdirectory). You might want to move your old files to the new place.
 
 ## Prerequisites
 

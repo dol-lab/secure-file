@@ -7,9 +7,10 @@
  * @wordpress-plugin
  * Plugin Name: Secure File
  * Plugin URI: https://github.com/dol-lab/secure-file
- * Version: 0.2
+ * Version: 0.2.2
  * Author: Vitus Schuhwerk
- * Description: This plugin is not plug and play. Specify File security. This Plugin exposes a filter "secure_file_cookie". It's designed for a post-mu network.
+ * Description: This plugin is not plug and play. Specify File security. This Plugin exposes a filter "secure_file_cookie".
+ * It's designed for a post-mu network.
  * Text Domain: sfile
  * License: GPLv3
  *
@@ -17,8 +18,6 @@
  *
  * To better understand the code here check file naming conventions:
  * @see https://stackoverflow.com/questions/2235173/file-name-path-name-base-name-naming-standard-for-pieces-of-a-path
- * @todo
- * @todo: add filter sanitize_file_name to not allow filenames with multiple dots: preg_replace( '/\.+/', '.', $new_filename );
  */
 
 require_once 'includes/sfile-filters-actions.php';
