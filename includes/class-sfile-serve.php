@@ -8,6 +8,7 @@
  * @file
  */
 
+require_once dirname( __DIR__ ) . '/vendor/autoload.php';
 /**
  * Serves files
  */
@@ -15,10 +16,15 @@ class ServeFile {
 
 	private $abs_path;
 	private $filesize;
+	private $mime_detector;
 
 	public function __construct( $abs_path ) {
 		$this->abs_path = $abs_path;
 		$this->filesize = filesize( $this->abs_path );
+
+		$map = new League\MimeTypeDetection\GeneratedExtensionToMimeTypeMap();
+		$this->mime_detector = new League\MimeTypeDetection\FinfoMimeTypeDetector( '', $map );
+
 		if ( isset( $_SERVER['HTTP_RANGE'] ) ) {
 			$this->stream_file();
 		} else { // no range is specified, use readfile for more performace
@@ -79,32 +85,15 @@ class ServeFile {
 	 */
 	private function output_headers() {
 
-		$mime['type'] = mime_content_type( $this->abs_path );
+		$mimetype = $this->mime_detector->detectMimeTypeFromPath( $this->abs_path );
 
-		/*
-		$mime = wp_check_filetype( $this->abs_path );
-		if ( false === $mime[ 'type' ] && function_exists( 'mime_content_type' ) )
-		$mime[ 'type' ] = mime_content_type( $this->abs_path );
-		*/
-
-		// https://stackoverflow.com/questions/45179337/mime-content-type-returning-text-plain-for-css-and-js$this->files-only
-		if ( substr( $this->abs_path, -4 ) === '.css' ) {
-			$mime['type'] = 'text/css';
-		}
-
-		if ( $mime['type'] ) {
-			$mimetype = $mime['type'];
-		} else {
-			$mimetype = 'image/' . substr( $this->abs_path, strrpos( $this->abs_path, '.' ) + 1 );
-		}
-
-		header( 'Content-Type: ' . $mimetype ); // always send this
+		header( 'Content-Type: ' . $mimetype ); // always send this.
 		if ( false === strpos( $_SERVER['SERVER_SOFTWARE'], 'Microsoft-IIS' ) ) {
 			header( 'Content-Length: ' . $this->filesize );
 		}
 
 		$last_modified = gmdate( 'D, d M Y H:i:s', filemtime( $this->abs_path ) );
-		$etag          = '"' . md5( $last_modified ) . '"';
+		$etag = '"' . md5( $last_modified ) . '"';
 		header( "Last-Modified: $last_modified GMT" );
 		header( 'ETag: ' . $etag );
 		header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + 100000000 ) . ' GMT' );

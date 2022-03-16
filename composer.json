@@ -10,5 +10,8 @@
             "name": "Vitus Schuhwerk",
             "homepage": "https://github.com/schuhwerk"
         }
-    ]
+    ],
+    "require": {
+        "league/mime-type-detection": "^1.9"
+    }
 }
