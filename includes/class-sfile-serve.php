@@ -22,12 +22,12 @@ class ServeFile {
 		$this->abs_path = $abs_path;
 		$this->filesize = filesize( $this->abs_path );
 
-		$map = new League\MimeTypeDetection\GeneratedExtensionToMimeTypeMap();
+		$map                 = new League\MimeTypeDetection\GeneratedExtensionToMimeTypeMap();
 		$this->mime_detector = new League\MimeTypeDetection\FinfoMimeTypeDetector( '', $map );
 
 		if ( isset( $_SERVER['HTTP_RANGE'] ) ) {
 			$this->stream_file();
-		} else { // no range is specified, use readfile for more performace
+		} else { // no range is specified, use readfile for more performance.
 			$this->output_headers( $this->filesize );
 			// exit;
 			readfile( $this->abs_path );
@@ -36,45 +36,69 @@ class ServeFile {
 	}
 
 	/**
-	 * Streams a filie
+	 * Streams a file.
+	 * Thanks imanghafoori1/laravel-video
 	 *
 	 * @return void
 	 */
 	private function stream_file() {
-		$buffer_size = 2 * 1024 * 1024; // 2MB
-		$offset      = 0;
-		$length      = $this->filesize;
 
-		/**
-		 * if the HTTP_RANGE header is set we're dealing with partial content
-		 * find the requested range
-		 * this might be too simplistic, apparently the client can request
-		 * multiple ranges, which can become pretty complex, so ignore it for now
-		 */
-		preg_match( '/bytes=(\d+)-(\d+)?/', $_SERVER['HTTP_RANGE'], $matches );
-		$offset = intval( $matches[1] );
-		if ( ! isset( $matches[2] ) ) {
-			$matches[2] = false;
+		ob_get_clean();
+
+		$buffer = 1024 * 1024; // 1 MB;
+
+		$start = 0;
+		$size  = filesize( $this->abs_path );
+		$end   = $size - 1;
+		header( 'Accept-Ranges: 0-' . $end );
+
+		$end            = $end;
+		list( ,$range ) = explode( '=', $_SERVER['HTTP_RANGE'], 2 );
+
+		if ( strpos( $range, ',' ) !== false ) {
+			header( 'HTTP/1.1 416 Requested Range Not Satisfiable' );
+			header( "Content-Range: bytes $start-$end/$size" );
+			exit;
 		}
-		$end    = $matches[2] || '0' === $matches[2] ? intval( $matches[2] ) : $this->filesize - 1;
-		$length = $end + 1 - $offset;
-		// output the right headers for partial content.
+
+		if ( $range == '-' ) {
+			$start = $size - substr( $range, 1 );
+		} else {
+			$range = explode( '-', $range );
+			$start = $range[0];
+
+			$end = ( isset( $range[1] ) && is_numeric( $range[1] ) ) ? $range[1] : $end;
+		}
+		$end = ( $end > $end ) ? $end : $end;
+		if ( $start > $end || $start > $size - 1 || $end >= $size ) {
+			header( 'HTTP/1.1 416 Requested Range Not Satisfiable' );
+			header( "Content-Range: bytes $start-$end/$size" );
+			exit;
+		}
+
+		$length      = $end - $start + 1;
+		$file_stream = fopen( $this->abs_path, 'r' );
+		fseek( $file_stream, $start );
 		header( 'HTTP/1.1 206 Partial Content' );
-		header( "Content-Range: bytes $offset-$end/$this->filesize" );
-		// output the regular HTTP headers.
-		$this->output_headers();
-		$file = fopen( $this->abs_path, 'r' );
-		// seek to the requested offset, this is 0 if it's not a partial content request.
-		fseek( $file, $offset );
+		header( "Content-Range: bytes $start-$end/" . $size );
+		$this->output_headers( $length );
 
-		while ( $length >= $buffer_size ) {
-			print( fread( $file, $buffer_size ) );
-			$length -= $buffer_size;
+		$i = $start;
+		set_time_limit( 0 );
+		while ( ! feof( $file_stream ) && $i <= $end ) {
+
+			$bytes_to_read = $buffer;
+			if ( ( $i + $bytes_to_read ) > $end ) {
+				$bytes_to_read = $end - $i + 1;
+			}
+			$data = fread( $file_stream, $bytes_to_read );
+			echo $data;
+			flush();
+			$i += $bytes_to_read;
 		}
-		if ( $length ) {
-			print( fread( $file, $length ) );
-		}
-		fclose( $file );
+		fclose( $file_stream );
+		exit;
+
 	}
 
 	/**
@@ -83,17 +107,18 @@ class ServeFile {
 	 *
 	 * @return void
 	 */
-	private function output_headers() {
+	private function output_headers( $content_length ) {
 
 		$mimetype = $this->mime_detector->detectMimeTypeFromPath( $this->abs_path );
 
 		header( 'Content-Type: ' . $mimetype ); // always send this.
-		if ( false === strpos( $_SERVER['SERVER_SOFTWARE'], 'Microsoft-IIS' ) ) {
-			header( 'Content-Length: ' . $this->filesize );
+		if ( $content_length ) {
+			header( 'Content-Length: ' . $content_length );
 		}
 
-		$last_modified = gmdate( 'D, d M Y H:i:s', filemtime( $this->abs_path ) );
-		$etag = '"' . md5( $last_modified ) . '"';
+		$last_modified = gmdate( 'D, d M Y H:i:s', @filemtime( $this->abs_path ) );
+		$etag          = '"' . md5( $last_modified ) . '"';
+		header( 'Cache-Control: max-age=2592000, public' );
 		header( "Last-Modified: $last_modified GMT" );
 		header( 'ETag: ' . $etag );
 		header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + 100000000 ) . ' GMT' );
