@@ -4,11 +4,14 @@ This is not your standard plug & play plugin, you need to do some manual modific
 Wordpress does not normally restrict the access to files (it did, a very long time ago). This plugin creates a way to do it, without sacrificing too much performance.
 The basic idea is to give every user a key (via. cookies) for a specific folder in the uploads directory, which is valid for a certain time. This way we don't have to load the whole WordPress environment for each file request, but just check the key (and give it to a user if she or he is allowed to access). WP saves files in a path like /uploads/BLOG_ID/YEAR/MONTH/... So you can limit by blog ids or by a year, a month, ...
 
-
 ℹ WordPress handles uploads for the main_site( blog_id = 1) differently than every other blog.
 Instead of putting uploads in `uploads/sites/1/year/...` it puts them directly in the uploads folder like `uploads/year/...`
 
+ℹ To avoid loading WordPress for every file and still have the correct mime-types for files, we use [thephpleague/mime-type-detection](https://github.com/thephpleague/mime-type-detection) for checking mime-types. They are not connected to anything you have set up in WordPress.
+
 🚨 This plugin changes the upload path of newly uploaded files in the main_site (to a subdirectory). You might want to move your old files to the new place.
+
+
 
 ## Prerequisites
 
