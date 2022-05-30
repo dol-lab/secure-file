@@ -53,7 +53,7 @@ class SFile_Manager {
 
 	/**
 	 * The WordPress Upload directory.
-	 * Absolete Server Path.
+	 * Absolute Server Path.
 	 * WP_CONTENT_DIR/uploads.
 	 *
 	 * @var string
@@ -104,7 +104,7 @@ class SFile_Manager {
 		$this->error_image = dirname( dirname( __FILE__ ) ) . '/no-access.jpg';
 
 		/**
-		 * Having UPLOADS definde does not really make sense with this Plugin Security revolves around subfolders.
+		 * Having UPLOADS defined does not really make sense with this. Plugin Security revolves around subfolders.
 		 * Defining UPLOADS puts everything in a single folder...
 		 */
 		if ( defined( 'UPLOADS' ) ) {

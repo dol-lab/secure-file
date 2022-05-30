@@ -37,7 +37,9 @@ function sfile_check_wp() {
 
 function sfile_check_uploads() {
 	if ( defined( 'UPLOADS' ) ) {
-		return __( 'Having the constant <code>UPLOADS</code> defined is currently not supported. Things might break.' );
+		return __( 'Having the constant <code>UPLOADS</code> defined is currently not supported. '.
+		'You might have an old db where "ms_files_rewriting" is set "1" or not present (see ms_upload_constants). ' .
+		'Things might break.' );
 	}
 }
 
