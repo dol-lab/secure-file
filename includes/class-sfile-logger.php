@@ -29,7 +29,7 @@ class SFile_Logger {
 	private $prefix = '';
 
 	/**
-	 * Weather the logger is verbose or not.
+	 * Wether the logger is verbose or not.
 	 *
 	 * @var boolean
 	 */
