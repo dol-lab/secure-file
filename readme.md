@@ -52,7 +52,7 @@ if ( ! empty( WP_PLUGIN_DIR ) ) {
 }
 ```
 
-Now write a plugin and customize your access-rules.
+Now write a plugin and customize your access-rules (this has the full WordPress context and is only loaded, if the user does not have access).
 
 ``` php
 add_filter( 'secure_file_cookie', 'my_file_security', 10, 4 );
