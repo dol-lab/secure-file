@@ -101,7 +101,7 @@ class SFile_Manager {
 
 		$this->user_error = $user_error;
 
-		$this->error_image = dirname( dirname( __FILE__ ) ) . '/no-access.jpg';
+		$this->error_image = dirname( __DIR__ ) . '/no-access.jpg';
 
 		/**
 		 * Having UPLOADS defined does not really make sense with this. Plugin Security revolves around subfolders.
@@ -136,9 +136,8 @@ class SFile_Manager {
 			$this->go_away( 'Looks like you added a file directly to the uploads dir. don\'t like that. Make a subfolder ;)' );
 		}
 
-		$this->f_cookie = new SFile_Cookie( $this->abs_path, $this->upload_subdir_arr );
+		$this->f_cookie                  = new SFile_Cookie( $this->abs_path, $this->upload_subdir_arr );
 		$this->f_cookie->logger->verbose = $debug;
-
 	}
 
 	/**
@@ -148,7 +147,7 @@ class SFile_Manager {
 	 */
 	public function maybe_serve_file() {
 
-		$this->logger->log( "Check if user can accesss $this->filename" );
+		$this->logger->log( "Check if user can access $this->filename" );
 
 		if ( $this->f_cookie->has_valid_cookie() ) {
 			/**
@@ -165,7 +164,7 @@ class SFile_Manager {
 
 			$this->wp_initialiced = true;
 
-			/** This is the core interface of the pugin:
+			/** This is the core interface of the plugin:
 			 * - A users asks you to give her access to a folder (the one with the file she wants)
 			 * - the $upload_subdir_arr contains an array with all parent folders (the uploads folder is the last but excluded)
 			 * - it looks like array('sites', 123, 2018, 08) for a file in sites subfolder, blogid 123, year 2018 month 08
@@ -214,7 +213,6 @@ class SFile_Manager {
 			 */
 			new ServeFile( $this->abs_path );
 		}
-
 	}
 
 
@@ -271,5 +269,4 @@ class SFile_Manager {
 		}
 		$this->error_image = $img;
 	}
-
 }
