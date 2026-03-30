@@ -7,14 +7,14 @@ namespace Composer\Autoload;
 class ComposerStaticInit762649f4f84b39fd5416e7c33d79f953
 {
     public static $prefixLengthsPsr4 = array (
-        'L' => 
+        'L' =>
         array (
             'League\\MimeTypeDetection\\' => 25,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
-        'League\\MimeTypeDetection\\' => 
+        'League\\MimeTypeDetection\\' =>
         array (
             0 => __DIR__ . '/..' . '/league/mime-type-detection/src',
         ),
