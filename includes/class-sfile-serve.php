@@ -1,23 +1,44 @@
-<?php
+<?php 
 /**
- * ServeFile Class
- *
- * @todo: rename files and classes!
+ * File serving for secure-file plugin.
  *
  * @package sfile
- * @file
  */
 
+// Autoloader.
 require_once dirname( __DIR__ ) . '/vendor/autoload.php';
+
 /**
- * Serves files
+ * Serves files to authenticated users.
  */
 class ServeFile {
 
+	/**
+	 * Absolute path to the file.
+	 *
+	 * @var string
+	 */
 	private $abs_path;
+
+	/**
+	 * File size in bytes.
+	 *
+	 * @var int
+	 */
 	private $filesize;
+
+	/**
+	 * MIME type detector instance.
+	 *
+	 * @var League\MimeTypeDetection\FinfoMimeTypeDetector
+	 */
 	private $mime_detector;
 
+	/**
+	 * Serve or stream the file.
+	 *
+	 * @param string $abs_path Absolute path to the file.
+	 */
 	public function __construct( $abs_path ) {
 		$this->abs_path = $abs_path;
 		$this->filesize = filesize( $this->abs_path );
@@ -27,10 +48,9 @@ class ServeFile {
 
 		if ( isset( $_SERVER['HTTP_RANGE'] ) ) {
 			$this->stream_file();
-		} else { // no range is specified, use readfile for more performance.
+		} else {
 			$this->output_headers( $this->filesize );
-			// exit;
-			readfile( $this->abs_path );
+			readfile( $this->abs_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile
 			flush();
 		}
 	}
@@ -45,15 +65,15 @@ class ServeFile {
 
 		ob_get_clean();
 
-		$buffer = 1024 * 1024; // 1 MB;
+		$buffer = 1024 * 1024; // 1 MB.
 
 		$start = 0;
-		$size  = filesize( $this->abs_path );
+		$size  = $this->filesize;
 		$end   = $size - 1;
 		header( 'Accept-Ranges: 0-' . $end );
 
-		$end            = $end;
-		list( ,$range ) = explode( '=', $_SERVER['HTTP_RANGE'], 2 );
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- HTTP_RANGE is validated below.
+		list( , $range ) = explode( '=', $_SERVER['HTTP_RANGE'], 2 );
 
 		if ( strpos( $range, ',' ) !== false ) {
 			header( 'HTTP/1.1 416 Requested Range Not Satisfiable' );
@@ -61,7 +81,7 @@ class ServeFile {
 			exit;
 		}
 
-		if ( $range == '-' ) {
+		if ( '-' === $range ) {
 			$start = $size - substr( $range, 1 );
 		} else {
 			$range = explode( '-', $range );
@@ -69,7 +89,7 @@ class ServeFile {
 
 			$end = ( isset( $range[1] ) && is_numeric( $range[1] ) ) ? $range[1] : $end;
 		}
-		$end = ( $end > $end ) ? $end : $end;
+
 		if ( $start > $end || $start > $size - 1 || $end >= $size ) {
 			header( 'HTTP/1.1 416 Requested Range Not Satisfiable' );
 			header( "Content-Range: bytes $start-$end/$size" );
@@ -77,7 +97,7 @@ class ServeFile {
 		}
 
 		$length      = $end - $start + 1;
-		$file_stream = fopen( $this->abs_path, 'r' );
+		$file_stream = fopen( $this->abs_path, 'r' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
 		fseek( $file_stream, $start );
 		header( 'HTTP/1.1 206 Partial Content' );
 		header( "Content-Range: bytes $start-$end/" . $size );
@@ -91,20 +111,20 @@ class ServeFile {
 			if ( ( $i + $bytes_to_read ) > $end ) {
 				$bytes_to_read = $end - $i + 1;
 			}
-			$data = fread( $file_stream, $bytes_to_read );
-			echo $data;
+			$data = fread( $file_stream, $bytes_to_read ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread
+			echo $data; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- binary file data.
 			flush();
 			$i += $bytes_to_read;
 		}
-		fclose( $file_stream );
+		fclose( $file_stream ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 		exit;
-
 	}
 
 	/**
 	 * Set the header for a file.
 	 * This is partially WordPress (ms-files.php)
 	 *
+	 * @param int $content_length The content length in bytes.
 	 * @return void
 	 */
 	private function output_headers( $content_length ) {
@@ -124,14 +144,14 @@ class ServeFile {
 		header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + 100000000 ) . ' GMT' );
 
 		// Support for Conditional GET - use stripslashes to avoid formatting.php dependency.
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- HTTP headers used only for cache comparison.
 		$client_etag = isset( $_SERVER['HTTP_IF_NONE_MATCH'] ) ? stripslashes( $_SERVER['HTTP_IF_NONE_MATCH'] ) : false;
 
 		if ( ! isset( $_SERVER['HTTP_IF_MODIFIED_SINCE'] ) ) {
 			$_SERVER['HTTP_IF_MODIFIED_SINCE'] = false;
 		}
 
-		date_default_timezone_set( 'UTC' );
-
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- HTTP header used only for cache comparison.
 		$client_last_modified = trim( $_SERVER['HTTP_IF_MODIFIED_SINCE'] );
 		// If string is empty, return 0. If not, attempt to parse into a timestamp.
 		$client_modified_timestamp = $client_last_modified ? strtotime( $client_last_modified . ' UTC' ) : 0;
@@ -140,12 +160,11 @@ class ServeFile {
 		$modified_timestamp = strtotime( $last_modified . ' UTC' );
 
 		if ( ( $client_last_modified && $client_etag )
-		? ( ( $client_modified_timestamp >= $modified_timestamp ) && ( $client_etag == $etag ) )
-		: ( ( $client_modified_timestamp >= $modified_timestamp ) || ( $client_etag == $etag ) )
+		? ( ( $client_modified_timestamp >= $modified_timestamp ) && ( $client_etag === $etag ) )
+		: ( ( $client_modified_timestamp >= $modified_timestamp ) || ( $client_etag === $etag ) )
 		) {
 			header( StatusCodes::httpHeaderFor( 304 ) );
 			exit;
 		}
-
 	}
 }

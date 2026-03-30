@@ -15,7 +15,7 @@ Instead of putting uploads in `uploads/sites/1/year/...` it puts them directly i
 
 ## Prerequisites
 
-* PHP > 5.3 (hash sha)
+* PHP >= 7.1.2 (hash_hkdf, hash_hmac)
 * openssl_encrypt, openssl_decrypt need to be installed
 
 ## Setup
@@ -79,7 +79,7 @@ function my_file_security( $args, $file_url, $is_logged_in, $current_user ) {
 					$args['can_access'] = false;
 				}
 			} else { // user is logged in.
-				$args['message']    = 'User is logged in and can access all sites for now.';
+				$args['message']    = 'User is logged in and can access all files under /sites for now.';
 				$args['can_access'] = true;
 
 				/**

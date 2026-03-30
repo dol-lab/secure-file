@@ -13,60 +13,53 @@
 class SFile_Logger {
 
 	/**
-	 * If the logger tries to log before WordPress
-	 * we set the error_log location the the default wp-location.
-	 *
-	 * @var boolean
-	 */
-	private static $init = false;
-
-	/**
-	 * The logger can be prefixed on construct so error messages show like
-	 * [my Class] my error
+	 * The logger can be prefixed on construct so error messages show like "[my Class] my error"
 	 *
 	 * @var string
 	 */
 	private $prefix = '';
 
 	/**
-	 * Wether the logger is verbose or not.
+	 * Whether the logger is verbose or not.
 	 *
 	 * @var boolean
 	 */
-	public $verbose = false;
+	private $verbose = false;
 
 	/**
 	 * Init class.
 	 *
-	 * @param [string|class] $prefix Prefix your log messages with class (name).
+	 * @param string|object $prefix Prefix your log messages with class (name).
+	 * @param bool|null     $verbose Override verbosity. Defaults to SFILE_DEBUG constant.
 	 */
-	public function __construct( $prefix = '' ) {
+	public function __construct( $prefix = '', $verbose = null ) {
 		if ( is_object( $prefix ) ) {
 			$this->prefix = get_class( $prefix );
 		} else {
 			$this->prefix = $prefix;
 		}
-		return $this;
+		$this->verbose = $verbose ?? ( defined( 'SFILE_DEBUG' ) && SFILE_DEBUG );
 	}
 
 	/**
-	 * Logs things
+	 * Log data with optional description.
 	 *
-	 * @param [string|object|array] $data feed it whatever.
-	 * @param string                $descr a description.
+	 * @param mixed  $data  Any loggable data.
+	 * @param string $descr Optional description.
 	 * @return void
 	 */
 	public function log( $data, $descr = '' ) {
-		if ( ! self::$init ) {
-			ini_set( 'error_log', WP_CONTENT_DIR . '/debug.log' );
-			ini_set( 'error_reporting', E_ALL );
-			self::$init = true;
+		if ( ! $this->verbose ) {
+			return;
 		}
 
-		if ( $this->verbose ) {
-			$descr  = $descr ? $descr . ': ' : '';
-			$prefix = $this->prefix;
-			error_log( "[$prefix] " . $descr . print_r( $data, true ) );
+		$descr   = $descr ? $descr . ': ' : '';
+		$message = "[{$this->prefix}] {$descr}" . ( is_string( $data ) ? $data : print_r( $data, true ) );
+
+		if ( defined( 'WP_CONTENT_DIR' ) ) {
+			error_log( $message . PHP_EOL, 3, WP_CONTENT_DIR . '/debug.log' );
+		} else {
+			error_log( $message );
 		}
 	}
 }

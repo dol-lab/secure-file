@@ -67,7 +67,6 @@ function sfile_check_config() {
 		return esc_html__( 'Your wp-config.php file needs to sit in your root-directory (dirname(ABSPATH))', 'sfile' );
 	}
 
-	// $msg   .= check_defines(); // @todo: add again!
 	$dir     = "WP_PLUGIN_DIR . '/secure-file/get-file.php'";
 	$require = "require_once $dir;";
 	$search  = '^[\t\s ]*' . preg_quote( $require, '%' ); // beginning of line, then only tabs ans spaces.
@@ -91,38 +90,6 @@ function sfile_check_config() {
 	}
 	return $msg;
 }
-
-/**
- * Check if all necessary things are there.
- *
- * @todo: defines can not be checked like this.
- * - A better approach: First include the get-file.php.
- * - When this is done load the wp-config.php here.
- * - Add a check to the get-file.php and catch it here.
- *
- * @return void
- */
-/*
-function check_defines_wip() {
-	$defines = array(
-		'WP_PLUGIN_DIR',
-		'ABSPATH',
-		'WP_CONTENT_DIR',
-	);
-
-	foreach ( $defines as $define ) {
-		$matches = sfile_search_in_file( $config_file, $rgx_check_comment . 'define[^,]*' . $define );
-
-		if ( ! count( $matches ) ) {
-			array_push( $not_found, $define );
-		}
-	}
-
-	if ( count( $not_found ) ) {
-		$missing = implode( '<br>', $not_found );
-		$msg    .= __( 'Please define the following constant(s) in wp-config.php:', 'sfile' ) . '<br><code>' . $missing . '</code><br>';
-	}
-}*/
 
 /**
  * Check the installation's htaccess file

@@ -32,7 +32,7 @@ function sfile_activate_plugin() {
 			<p>$elems</p>
 			<style>code{background-color:whitesmoke;display:inline-block;padding:10px;}</style>
 		";
-		wp_die( $msg );
+		wp_die( wp_kses_post( $msg ) );
 	}
 }
 

@@ -1,20 +1,22 @@
 <?php
 /**
- * SFile_Cookie class
- *
- * Requires SFile_Logger class
+ * Cookie handling for secure-file plugin.
  *
  * @package sfile
- * @file
  *
- * @todo: validate & sanitize input variables.
  * @todo: somebody could have overlapping cookies and would always be blocked [ .kisd.de vs spaces.kisd.de ]? check all relevant cookies?
  */
 
+if ( ! defined( 'FILE_SALT' ) ) {
+	define( 'FILE_SALT', '' );
+}
+
+// Logger Class.
 require_once 'class-sfile-logger.php';
+
 /**
- * This Class is created to work without wordoress (it can init wp though).
- * Reads, validates, and deletes Cookies
+ * This Class is created to work without WordPress (it can init wp though).
+ * Reads, validates, and deletes Cookies.
  * Requires SFile_Logger class to work.
  */
 class SFile_Cookie {
@@ -27,13 +29,6 @@ class SFile_Cookie {
 	private static $prefix = 'pv_';
 
 	/**
-	 * Absolute path to the requested file
-	 *
-	 * @var string
-	 */
-	private $abs_path;
-
-	/**
 	 * Path to the requested file starting from uploads (exclusive) like
 	 * array('sites', '999', '2018', ... )
 	 *
@@ -44,21 +39,25 @@ class SFile_Cookie {
 	/**
 	 * Instance of the Logger Class
 	 *
-	 * @var [type]
+	 * @var SFile_Logger
 	 */
 	public $logger;
 
-
-	public function __construct( $abs_path, array $upload_subdir_arr ) {
-
-		$this->abs_path          = $abs_path;
+	/**
+	 * Setup the SFile_Cookie Class.
+	 *
+	 * @param string $abs_path Absolute path to the requested file.
+	 * @param array  $upload_subdir_arr Path segments from uploads dir.
+	 */
+	public function __construct( $abs_path, array $upload_subdir_arr ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundBeforeLastUsed
 		$this->upload_subdir_arr = $upload_subdir_arr;
 		$this->logger            = new SFile_Logger( $this );
-		// $this->logger->verbose   = SFILE_DEBUG;
 	}
 
 	/**
 	 * Check if the client has a valid cookie.
+	 *
+	 * @return bool
 	 */
 	public function has_valid_cookie() {
 
@@ -82,20 +81,17 @@ class SFile_Cookie {
 		}
 		$this->logger->log( "No vaid cookie found for user '$cookie_username' and dir '$readable_dir'" );
 		return false;
-
 	}
 
 	/**
 	 * Create a Cookie for the user if she has access rights.
 	 * You can access all WP-Functions after requiring wp-settings.php.
 	 *
-	 * @param [type] $dir the directory array.
-	 * @param [type] $valid_minutes The amount of minutes the cookie is valid.
+	 * @param array $dir the directory array.
+	 * @param int   $valid_minutes The amount of minutes the cookie is valid.
 	 * @return void
 	 */
 	public function make_cookie( $dir, $valid_minutes ) {
-
-		global $table_prefix;
 
 		require_once ABSPATH . 'wp-settings.php';
 
@@ -107,31 +103,44 @@ class SFile_Cookie {
 
 		$key_name = $this->make_cookie_key( $dir );
 		$value    = $this->make_cookie_value( $username, $key_name, $valid_minutes );
-		$expire   = time() + $valid_minutes * 60; // + rand(0,35);
+		$expire   = time() + $valid_minutes * 60;
 
 		$domain   = '';
 		$secure   = is_ssl();
-		$httponly = true; // the cookie won't be accessible by scripting languages, such as JavaScript.
 		$samesite = 'Strict';
 		$path     = '/';
 
-		setcookie( $key_name, $value, $expire, $path, $domain, $secure, $httponly );
-
+		setcookie(
+			$key_name,
+			$value,
+			array(
+				'expires'  => $expire,
+				'path'     => $path,
+				'domain'   => $domain,
+				'secure'   => $secure,
+				'httponly' => true,
+				'samesite' => $samesite,
+			)
+		);
 		$this->logger->log( "User $username receives a key for $valid_minutes mins for dir: " . implode( '/', $dir ) );
-
 	}
 
 	/**
 	 * Validates an existing cookie
 	 *
-	 * @param [string] $key_name The key of the cookie.
-	 * @param [string] $pretended_username The username the cookie contains.
+	 * @param string $key_name The key of the cookie.
+	 * @param string $pretended_username The username the cookie contains.
 	 * @return boolean
 	 */
 	private function is_cookie_valid( $key_name, $pretended_username ) {
-
-		$value          = rawurldecode( $_COOKIE[ $key_name ] );
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- cookie value is decrypted and validated below.
+		$value          = isset( $_COOKIE[ $key_name ] ) ? rawurldecode( $_COOKIE[ $key_name ] ) : '';
 		$cookie_content = $this->no_db_crypt( $value, $key_name, false );
+
+		if ( ! $cookie_content ) {
+			$this->logger->log( "Something is wrong with your cookie [$key_name]. Couldn't decrypt." );
+			return false;
+		}
 
 		$data = explode( '|', $cookie_content );
 
@@ -152,7 +161,7 @@ class SFile_Cookie {
 			return false;
 		}
 
-		if ( $cdata['key_name'] !== $key_name ) { // hm, this probably can't happen...
+		if ( $cdata['key_name'] !== $key_name ) {
 			$this->logger->log( "You cookie  key name does not match the one stored in the cookie [$key_name]." );
 			return false;
 		}
@@ -168,90 +177,86 @@ class SFile_Cookie {
 		 * added a timestamp the hash would be wrong an the cookie not valid.
 		 */
 		$correct_hash = $this->no_db_hash( $cdata['username'], $cdata['key_name'], $cdata['timestamp'] );
-		if ( $cdata['hash'] !== $correct_hash ) {
+		if ( ! hash_equals( $correct_hash, $cdata['hash'] ) ) {
 			$this->logger->log( 'hash mismatch' );
 			return false;
 		}
 
 		// we validated the timestamp via the hash.
 		return true;
-
 	}
 
-
 	/**
-	 * The cookie value contains:
-	 *  a hashed secret
-	 *  the username
-	 *  and the time the cookie is valid
+	 * The cookie value contains a hashed secret, the username,
+	 * and the time the cookie is valid. This info is encrypted.
+	 * The hashed secret also depends on the timestamp.
 	 *
-	 * this info is encrypted.
-	 *
-	 * the hashed secret also depends on the timestamp.
+	 * @param string $username The username.
+	 * @param string $key_name The cookie key name.
+	 * @param int    $valid_mins Minutes the cookie is valid.
+	 * @return string
 	 */
-	private function make_cookie_value( $username, $key_name, $valid_mins = 20 ) {
+	private function make_cookie_value( $username, $key_name, $valid_mins ) {
 		$timestamp = time() + $valid_mins * 60;
 		$hash      = $this->no_db_hash( $username, $key_name, $timestamp );
 		$c_string  = $hash . '|' . $username . '|' . $key_name . '|' . $timestamp;
 		$val       = $this->no_db_crypt( $c_string, $key_name );
 		if ( ! $val ) {
-			$this->go_away( 'something went wrong encrypting the cookie.' );
+			$this->logger->log( 'Something went wrong encrypting the cookie.' );
+			die( 'Something went wrong encrypting the cookie.' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
 
 		return $val;
 	}
 
+	/**
+	 * Create a hash from username, key name and timestamp.
+	 *
+	 * @param string $username  The username.
+	 * @param string $key_name  The cookie key name.
+	 * @param int    $timestamp The expiry timestamp.
+	 * @return string
+	 */
 	private function no_db_hash( $username, $key_name, $timestamp ) {
-		$secret = hexdec( substr( bin2hex( $username . $key_name ), 0, 8 ) ) * $timestamp;
-		return str_replace( '|', '', hash( 'sha256', $secret, FILE_SALT ) );
+		$data = $username . '|' . $key_name . '|' . $timestamp;
+		return str_replace( '|', '', hash_hmac( 'sha256', $data, FILE_SALT ) );
 	}
 
 	/**
 	 * Encrypt and Decrypt (openssl) a String
 	 *
-	 * @param string  $string The string you want to en-/decrypt.
-	 * @param string  $iv A non-NULL Initialization Vector. @see http://php.net/manual/de/function.openssl-decrypt.php .
-	 * @param boolean $encrypt set false to decrypt.
+	 * @param string  $input_string The string you want to en-/decrypt.
+	 * @param string  $iv           A non-NULL Initialization Vector.
+	 * @param boolean $encrypt      Set false to decrypt.
 	 * @return string
 	 */
-	private function no_db_crypt( $string, $iv, $encrypt = true ) {
+	private function no_db_crypt( $input_string, $iv, $encrypt = true ) {
 
-		$secret_key     = $iv;// $iv.$_SERVER['PATH']; //hm, always the same for a docker image...
-		$secret_iv      = $_SERVER['SERVER_SOFTWARE'] . $iv;
-		$output         = false;
+		// Derive a secure key using HKDF based on FILE_SALT.
+		$key = hash_hkdf( 'sha256', FILE_SALT, 32, 'sfile-cookie-crypt' );
+
+		// Use the $iv (key_name) to derive a deterministic IV (must be 16 bytes for AES-256-CBC).
+		$encrypt_iv = substr( hash_hmac( 'sha256', $iv, FILE_SALT ), 0, 16 );
+
 		$encrypt_method = 'AES-256-CBC';
-		$key            = hash( 'sha256', $secret_key );
-		$iv             = substr( hash( 'sha256', $secret_iv ), 0, 16 );
 
 		if ( $encrypt ) {
-			$output = base64_encode( openssl_encrypt( $string, $encrypt_method, $key, 0, $iv ) );
+			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- used for cookie transport encoding.
+			$output = base64_encode( openssl_encrypt( $input_string, $encrypt_method, $key, 0, $encrypt_iv ) );
 		} else {
-			$output = openssl_decrypt( base64_decode( $string ), $encrypt_method, $key, 0, $iv );
+			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- used for cookie transport decoding.
+			$output = openssl_decrypt( base64_decode( $input_string ), $encrypt_method, $key, 0, $encrypt_iv );
 		}
 		return $output;
 	}
 
 	/**
-	 * Create all possible cookie names that could apply to the path of the requested file.
+	 * Create a cookie key from the upload subdirectory array.
 	 *
-	 * @param [array] $upload_subdir_arr The path of the requested file.
-	 * @param boolean $limit Limit the depth of the path.
-	 * @return array all possible cookie names. looks like array('a', 'a_b', 'a_b_c').
+	 * @param array       $upload_subdir_arr The path segments.
+	 * @param boolean|int $limit             Limit the depth of the path.
+	 * @return string
 	 */
-	private function make_all_cookie_keys( $upload_subdir_arr, $limit = false ) {
-		$keys = array();
-		if ( $limit ) {
-			$upload_subdir_arr = array_slice( $upload_subdir_arr, 0, $limit );
-		}
-		$elems = count( $upload_subdir_arr );
-		while ( $elems ) {
-			array_push( $keys, $this->make_cookie_key( $upload_subdir_arr, $limit ) );
-			array_pop( $upload_subdir_arr );
-			$elems--;
-		}
-		return array_reverse( $keys );
-	}
-
 	private function make_cookie_key( $upload_subdir_arr, $limit = false ) {
 		if ( $limit ) {
 			$upload_subdir_arr = array_slice( $upload_subdir_arr, 0, $limit );
@@ -260,23 +265,24 @@ class SFile_Cookie {
 	}
 
 	/**
-	 * Get the most specific cookie key which maches the directory the user is trying to acccess.
+	 * Get the most specific cookie key which matches the directory the user is trying to access.
+	 * Searches from most specific to least specific, returning on first match.
 	 *
-	 * @param [array] $upload_subdir_arr the diectory array [blogid, year, month, ...].
-	 * @return string | boolean the key, which is save in the client cookie or false.
+	 * @param array $upload_subdir_arr the directory array [blogid, year, month, ...].
+	 * @return string|false the key, which is saved in the client cookie or false.
 	 */
 	private function get_client_cookie( $upload_subdir_arr ) {
-
-		$cookie_keys = $this->make_all_cookie_keys( $upload_subdir_arr ); // unspecific to specific.
-
-		$key_found = false;
-		foreach ( $cookie_keys as $key ) {
+		$segments      = $upload_subdir_arr;
+		$segment_count = count( $segments );
+		while ( $segment_count ) {
+			$key = self::$prefix . implode( '_', $segments );
 			if ( isset( $_COOKIE[ $key ] ) ) {
-				// we overwrite the less specific cookie key with the more specific one (if it exists).
-				$key_found = $key;
+				return $key;
 			}
+			array_pop( $segments );
+			--$segment_count;
 		}
-		return $key_found;
+		return false;
 	}
 
 	/**
@@ -285,8 +291,8 @@ class SFile_Cookie {
 	 * @return void
 	 */
 	public function remove_all_file_cookies() {
-		$removed = [];
-		foreach ( $_COOKIE as $key => $value ) {
+		$removed = array();
+		foreach ( $_COOKIE as $key => $cookie_value ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 			if ( strpos( $key, self::$prefix ) === 0 ) {
 				$removed[] = $key;
 				$this->remove_client_cookie( $key );
@@ -301,15 +307,25 @@ class SFile_Cookie {
 	}
 
 	/**
-	 * Remve a cookie
+	 * Remove a cookie
 	 *
-	 * @param [string] $key The key name of the cookie you want to remove.
+	 * @param string $key The key name of the cookie you want to remove.
 	 * @return void
 	 */
 	private function remove_client_cookie( $key ) {
 		if ( isset( $_COOKIE[ $key ] ) ) {
 			unset( $_COOKIE[ $key ] );
-			setcookie( $key, '', time() - 3600, '/' ); // empty value and old timestamp.
+			setcookie(
+				$key,
+				'',
+				array(
+					'expires'  => time() - 3600,
+					'path'     => '/',
+					'secure'   => true,
+					'httponly' => true,
+					'samesite' => 'Strict',
+				)
+			);
 		}
 	}
 
@@ -319,17 +335,17 @@ class SFile_Cookie {
 	 * @return string
 	 */
 	public static function get_anon_user() {
-		return 'anon'; // todo: some hashing, change daily!
+		return 'anon';
 	}
+
 	/**
 	 * Extract the username of the wp_logged in cookie
 	 *
-	 * @return string username or false
+	 * @return string|false username or false
 	 */
 	public static function extract_username() {
-		foreach ( $_COOKIE as $key => $value ) {
+		foreach ( $_COOKIE as $key => $value ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 			if ( 'wordpress_logged_in_' === substr( $key, 0, 20 ) ) {
-				$logged_in_val   = $value;
 				$cookie_elements = explode( '|', $value );
 				if ( count( $cookie_elements ) !== 4 ) {
 					return false;
@@ -340,5 +356,4 @@ class SFile_Cookie {
 
 		return false;
 	}
-
 }

@@ -10,8 +10,6 @@
  * Requires SFile_Cookie and SFile_Log class.
  *
  * Manages secure files.
- *
- * @todo: better output for File not found (it's always empty).
  */
 class SFile_Manager {
 
@@ -79,7 +77,7 @@ class SFile_Manager {
 	 *
 	 * @var boolean
 	 */
-	private $wp_initialiced = false;
+	private $wp_initialized = false;
 
 	/**
 	 * Setup the SFileManger Class.
@@ -94,10 +92,7 @@ class SFile_Manager {
 
 		require_once 'class-sfile-logger.php';
 
-		$debug = defined( 'SFILE_DEBUG' ) ? SFILE_DEBUG : false;
-
-		$this->logger          = new SFile_Logger( $this );
-		$this->logger->verbose = $debug;
+		$this->logger = new SFile_Logger( $this );
 
 		$this->user_error = $user_error;
 
@@ -110,7 +105,7 @@ class SFile_Manager {
 		if ( defined( 'UPLOADS' ) ) {
 			self::$upload_dir = trailingslashit( ABSPATH ) . UPLOADS;
 		} else {
-			// same as the default set in default-contants.php.
+			// same as the default set in default-constants.php.
 			self::$upload_dir = WP_CONTENT_DIR . '/uploads';
 		}
 
@@ -122,13 +117,12 @@ class SFile_Manager {
 
 		$this->abs_path = rtrim( self::$upload_dir, '/' ) . '/' . $relative_path;
 
-		if ( ! is_file( $this->abs_path ) ) {
-			$this->go_away( "404 &#8212; File not found. ($this->filename)", 404 );
-			wp_die( 'nah!' );
-		}
-
 		$arr_path       = explode( '/', $relative_path );
 		$this->filename = end( $arr_path );
+
+		if ( ! is_file( $this->abs_path ) ) {
+			$this->go_away( '404 &#8212; File not found: ' . $this->filename, 404 );
+		}
 		array_pop( $arr_path );
 		$this->upload_subdir_arr = $arr_path; // the last element is the file.
 
@@ -136,8 +130,7 @@ class SFile_Manager {
 			$this->go_away( 'Looks like you added a file directly to the uploads dir. don\'t like that. Make a subfolder ;)' );
 		}
 
-		$this->f_cookie                  = new SFile_Cookie( $this->abs_path, $this->upload_subdir_arr );
-		$this->f_cookie->logger->verbose = $debug;
+		$this->f_cookie = new SFile_Cookie( $this->abs_path, $this->upload_subdir_arr );
 	}
 
 	/**
@@ -162,7 +155,7 @@ class SFile_Manager {
 
 			require_once ABSPATH . 'wp-settings.php';
 
-			$this->wp_initialiced = true;
+			$this->wp_initialized = true;
 
 			/** This is the core interface of the plugin:
 			 * - A users asks you to give her access to a folder (the one with the file she wants)
@@ -174,7 +167,7 @@ class SFile_Manager {
 			 */
 			$args     = array(
 				'dir'           => $this->upload_subdir_arr,
-				'valid_minutes' => 20,
+				'valid_minutes' => 120,
 				/**
 				 * If you don't define a hook, you can not access any file.
 				 * So if there is an error files are not accidentally served.
@@ -195,7 +188,6 @@ class SFile_Manager {
 			if ( ! isset( $args['can_access'] ) ) {
 				$msg = 'Trying to access ' . $this->filename . ". Something went wrong with the filter 'secure_file_cookie'. The key 'can_access' needs to be defined.";
 				$this->logger->log( $msg );
-				// error_log( $msg );
 				$this->go_away( $msg . $this->filename );
 
 			}
@@ -204,7 +196,6 @@ class SFile_Manager {
 				$this->go_away( $args['message'] );
 			}
 
-			// @todo: log messages...
 			$this->logger->log( $args['message'] );
 
 			$this->f_cookie->make_cookie( $args['dir'], $args['valid_minutes'] );
@@ -218,40 +209,39 @@ class SFile_Manager {
 
 
 	/**
-	 * Gives an error (image/site) to the user
+	 * Gives an error (image/site) to the user.
 	 *
-	 * @todo use the glicht images.
-	 * @todo: it's probably nicer to redirect to the error image so it doesn't look like the current image.
-	 *
-	 * @param string $msg the message the user receives.
+	 * @param string $html_msg the message the user receives, make sure it is safe.
 	 * @param string $header the status header (like 404).
 	 * @return void
 	 */
-	private function go_away( $msg = '', $header = '' ) {
+	private function go_away( $html_msg = '', $header = '' ) {
 
 		if ( 'image' === $this->user_error ) {
 
 			if ( 0 === strpos( $this->error_image, 'http://' ) ) {
-				echo ( "<img src='$this->error_image' />" );
+				echo "<img src='" . esc_url( $this->error_image ) . "' />";
 			} else {
 				new ServeFile( $this->error_image );
 			}
 			die();
 		}
 
-		$this->logger->log( $msg, 'go_away' );
+		$this->logger->log( $html_msg, 'go_away' );
 
 		if ( $header ) {
 			header( StatusCodes::httpHeaderFor( $header ) );
 		}
 
-		if ( ! $msg ) {
-			$msg = 'Please log in to access this file.';
+		if ( ! $html_msg ) {
+			$html_msg = 'Please log in to access this file.';
 		}
-		if ( true === $this->wp_initialiced ) {
-			wp_die( $msg );
+		if ( true === $this->wp_initialized ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- we want to allow HTML in the message.
+			wp_die( $html_msg );
 		} else {
-			die( $msg );
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- we want to allow HTML in the message.
+			die( $html_msg );
 		}
 	}
 

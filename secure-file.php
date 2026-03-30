@@ -1,9 +1,5 @@
 <?php
 /**
- * Secure File
- *
- * @package Secure-File Package
- *
  * @wordpress-plugin
  * Plugin Name: Secure File
  * Plugin URI: https://github.com/dol-lab/secure-file
@@ -18,8 +14,10 @@
  *
  * To better understand the code here check file naming conventions:
  * @see https://stackoverflow.com/questions/2235173/file-name-path-name-base-name-naming-standard-for-pieces-of-a-path
+ * @package sfile
  */
 
+// Include file with filters and actions.
 require_once 'includes/sfile-filters-actions.php';
 
 add_filter( 'upload_dir', 'sfile_change_main_site_upload_dir', 10, 1 );

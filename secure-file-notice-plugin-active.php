@@ -1,7 +1,9 @@
 <?php
 /**
- * This is not your standard WordPress pulign file (readme.md for more).
+ * This is not your standard WordPress plugin file (readme.md for more).
  * It is loaded in wp-config.php and notices an admin, if the plugin is not active.
+ *
+ * @package sfile
  */
 
 if ( function_exists( 'add_action' ) ) {
