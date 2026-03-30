@@ -45,7 +45,14 @@ class ServeFile {
 
 		$map                 = new League\MimeTypeDetection\GeneratedExtensionToMimeTypeMap();
 		$this->mime_detector = new League\MimeTypeDetection\FinfoMimeTypeDetector( '', $map );
+	}
 
+	/**
+	 * Serve or stream the file.
+	 *
+	 * @return void
+	 */
+	public function serve() {
 		if ( isset( $_SERVER['HTTP_RANGE'] ) ) {
 			$this->stream_file();
 		} else {

@@ -163,7 +163,8 @@ class SFile_Manager {
 			/**
 			 * The user has a valid cookie. No need to start WP
 			 */
-			new ServeFile( $this->abs_path );
+			$server = new ServeFile( $this->abs_path );
+			$server->serve();
 			die();
 
 		} else {
@@ -219,7 +220,8 @@ class SFile_Manager {
 			/**
 			 * The user does not have a valid cookie
 			 */
-			new ServeFile( $this->abs_path );
+			$server = new ServeFile( $this->abs_path );
+			$server->serve();
 		}
 	}
 
@@ -239,7 +241,8 @@ class SFile_Manager {
 			if ( 0 === strpos( $this->error_image, 'http://' ) ) {
 				echo "<img src='" . esc_url( $this->error_image ) . "' />";
 			} else {
-				new ServeFile( $this->error_image );
+				$server = new ServeFile( $this->error_image );
+				$server->serve();
 			}
 			die();
 		}
