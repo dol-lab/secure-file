@@ -110,12 +110,29 @@ class SFile_Manager {
 		}
 
 		/**
-		 * Make sure nobody can access a parent dir
-		 * Contains the part after root/.../uploads/
+		 * Apply strict path security sequence: Transform -> Normalize -> Sanitize -> Use.
 		 */
+		// 1. Transform: clean obvious traversal patterns and trim.
 		$relative_path = ltrim( str_replace( '..', '', $abs_path ), '/' );
+		$constructed_path = rtrim( self::$upload_dir, '/' ) . '/' . $relative_path;
 
-		$this->abs_path = rtrim( self::$upload_dir, '/' ) . '/' . $relative_path;
+		// 2. Normalize: resolve canonical paths.
+		$normalized_target_dir = realpath( rtrim( self::$upload_dir, '/' ) );
+		$normalized_file_path  = realpath( $constructed_path );
+
+		// 3. Sanitize: Validate boundaries using strict suffix checking.
+		// Ensure the directory check explicitly prevents partial match vulnerabilities (e.g. /uploads_malicious/).
+		if ( false === $normalized_target_dir || false === $normalized_file_path ) {
+			$this->go_away( 'Invalid file path requested.', 403 );
+		}
+
+		$secured_target_dir = rtrim( $normalized_target_dir, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR;
+		if ( strpos( $normalized_file_path, $secured_target_dir ) !== 0 ) {
+			$this->go_away( 'Path traversal detected.', 403 );
+		}
+
+		// 4. Use: Assigned the completely vetted file.
+		$this->abs_path = $normalized_file_path;
 
 		$arr_path       = explode( '/', $relative_path );
 		$this->filename = end( $arr_path );
