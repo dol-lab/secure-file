@@ -113,7 +113,7 @@ class SFile_Manager {
 		 * Apply strict path security sequence: Transform -> Normalize -> Sanitize -> Use.
 		 */
 		// 1. Transform: clean obvious traversal patterns and trim.
-		$relative_path = ltrim( str_replace( '..', '', $abs_path ), '/' );
+		$relative_path    = ltrim( str_replace( '..', '', $abs_path ), '/' );
 		$constructed_path = rtrim( self::$upload_dir, '/' ) . '/' . $relative_path;
 
 		// 2. Normalize: resolve canonical paths.
@@ -183,7 +183,7 @@ class SFile_Manager {
 			 * - if you remove 08 and 2018 from the array, the key will be valid for all files uploaded to the blog 123.
 			 * - once the user has the cookie, this "key" will unlock folders without the need to load WordPress.
 			 */
-			$args     = array(
+			$args        = array(
 				'dir'           => $this->upload_subdir_arr,
 				'valid_minutes' => 120,
 				/**
@@ -193,7 +193,9 @@ class SFile_Manager {
 				'can_access'    => false,
 				'message'       => 'Sorry, you can not access this file.',
 			);
-			$file_url = 'http' . ( isset( $_SERVER['HTTPS'] ) ? 's' : '' ) . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+			$http_host   = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
+			$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+			$file_url    = 'http' . ( isset( $_SERVER['HTTPS'] ) ? 's' : '' ) . '://' . $http_host . $request_uri;
 
 			$args = apply_filters(
 				'secure_file_cookie',
@@ -257,8 +259,10 @@ class SFile_Manager {
 			$html_msg = 'Please log in to access this file.';
 		}
 		if ( true === $this->wp_initialized ) {
+			// Pass the status code through to wp_die(), otherwise it defaults to 500.
+			$args = $header ? array( 'response' => (int) $header ) : array();
 			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- we want to allow HTML in the message.
-			wp_die( $html_msg );
+			wp_die( $html_msg, '', $args );
 		} else {
 			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- we want to allow HTML in the message.
 			die( $html_msg );

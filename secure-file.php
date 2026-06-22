@@ -10,7 +10,7 @@
  * Text Domain: sfile
  * License: GPLv3
  *
- * For todos and prerequisites check readme.md.
+ * For todos and prerequisites check readme.md
  *
  * To better understand the code here check file naming conventions:
  * @see https://stackoverflow.com/questions/2235173/file-name-path-name-base-name-naming-standard-for-pieces-of-a-path
