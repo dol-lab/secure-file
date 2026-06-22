@@ -219,7 +219,28 @@ class SFile_Cookie {
 	 */
 	private function no_db_hash( $username, $key_name, $timestamp ) {
 		$data = $username . '|' . $key_name . '|' . $timestamp;
-		return str_replace( '|', '', hash_hmac( 'sha256', $data, FILE_SALT ) );
+		return str_replace( '|', '', hash_hmac( 'sha256', $data, $this->file_salt() ) );
+	}
+
+	/**
+	 * Return a non-empty FILE_SALT, or fail loudly.
+	 *
+	 * FILE_SALT is the only secret keying cookie crypto. When it is undefined or
+	 * empty (e.g. missing from .env) PHP 8.1+ turns hash_hkdf()/hash_hmac() into a
+	 * fatal ValueError, which surfaces as an opaque empty-body 500 with no log.
+	 * Validate it once, in one place, with an actionable message instead.
+	 *
+	 * @return string The validated salt.
+	 */
+	private function file_salt() {
+		if ( ! defined( 'FILE_SALT' ) || '' === (string) FILE_SALT ) {
+			$msg = 'FILE_SALT is undefined or empty — define a non-empty FILE_SALT (e.g. in your .env). '
+				. 'Secure-file cannot serve files without it.';
+			$this->logger->error( $msg );
+			// Static internal message, no user input — runs on the no-WP fast path where esc_* may be absent.
+			die( $msg ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		}
+		return FILE_SALT;
 	}
 
 	/**
@@ -232,11 +253,13 @@ class SFile_Cookie {
 	 */
 	private function no_db_crypt( $input_string, $iv, $encrypt = true ) {
 
+		$salt = $this->file_salt();
+
 		// Derive a secure key using HKDF based on FILE_SALT.
-		$key = hash_hkdf( 'sha256', FILE_SALT, 32, 'sfile-cookie-crypt' );
+		$key = hash_hkdf( 'sha256', $salt, 32, 'sfile-cookie-crypt' );
 
 		// Use the $iv (key_name) to derive a deterministic IV (must be 16 bytes for AES-256-CBC).
-		$encrypt_iv = substr( hash_hmac( 'sha256', $iv, FILE_SALT ), 0, 16 );
+		$encrypt_iv = substr( hash_hmac( 'sha256', $iv, $salt ), 0, 16 );
 
 		$encrypt_method = 'AES-256-CBC';
 
