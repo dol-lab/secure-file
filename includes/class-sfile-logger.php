@@ -56,6 +56,32 @@ class SFile_Logger {
 		$descr   = $descr ? $descr . ': ' : '';
 		$message = "[{$this->prefix}] {$descr}" . ( is_string( $data ) ? $data : print_r( $data, true ) );
 
+		$this->write( $message );
+	}
+
+	/**
+	 * Log a critical error, regardless of verbosity.
+	 *
+	 * Unlike log(), this always writes — serving failures must leave a trace so
+	 * an opaque 500 can be diagnosed without first enabling SFILE_DEBUG.
+	 *
+	 * @param mixed  $data  Any loggable data.
+	 * @param string $descr Optional description.
+	 * @return void
+	 */
+	public function error( $data, $descr = '' ) {
+		$descr   = $descr ? $descr . ': ' : '';
+		$message = "[{$this->prefix}] ERROR: {$descr}" . ( is_string( $data ) ? $data : print_r( $data, true ) );
+		$this->write( $message );
+	}
+
+	/**
+	 * Write a message to the debug log (or PHP's error log without WordPress).
+	 *
+	 * @param string $message The fully formatted message.
+	 * @return void
+	 */
+	private function write( $message ) {
 		if ( defined( 'WP_CONTENT_DIR' ) ) {
 			error_log( $message . PHP_EOL, 3, WP_CONTENT_DIR . '/debug.log' );
 		} else {

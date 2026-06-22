@@ -34,7 +34,21 @@ if ( isset( $_GET['sfile'] ) ) {
 	// in filenames like "Screenshot-123"), breaking valid UTF-8 paths before they reach realpath().
 	// phpcs:ignore WordPress.Security.ValidatedSanitizedInput,WordPress.Security.NonceVerification.Recommended -- runs without WordPress; validated via realpath() in SFile_Manager; nonce N/A (see top of file).
 	$sfile = filter_input( INPUT_GET, 'sfile', FILTER_DEFAULT );
-	$pv    = new SFile_Manager( $sfile );
-	$pv->maybe_serve_file();
 
+	// Serving runs partly without WordPress, so an uncaught Throwable becomes an opaque empty-body 500
+	// with nothing in any log. Catch it, log file:line:message (always), and return a clear response so
+	// the next failure is diagnosable at a glance.
+	try {
+		$pv = new SFile_Manager( $sfile );
+		$pv->maybe_serve_file();
+	} catch ( \Throwable $e ) {
+		$where = $e->getFile() . ':' . $e->getLine();
+		( new SFile_Logger( 'get-file' ) )->error( $e->getMessage() . ' @ ' . $where );
+		if ( ! headers_sent() ) {
+			require_once 'includes/class-sfile-status-codes.php';
+			header( StatusCodes::httpHeaderFor( 500 ) );
+		}
+		// No exception details leaked to the client; the full message+location is in the log above.
+		echo 'Secure-file could not serve this file. See the WordPress debug log for details.';
+	}
 }
