@@ -18,6 +18,13 @@ require_once 'class-sfile-logger.php';
  * This Class is created to work without WordPress (it can init wp though).
  * Reads, validates, and deletes Cookies.
  * Requires SFile_Logger class to work.
+ *
+ * Which side of the WordPress boundary a method runs on is decided by the caller
+ * (SFile_Manager::maybe_serve_file), not by anything visible here:
+ * - has_valid_cookie() and everything it reaches (incl. remove_client_cookie) run on the
+ *   fast path, BEFORE wp-settings.php. No core functions exist there — not is_ssl(),
+ *   esc_*(), __(), or any hook. Use plain PHP.
+ * - make_cookie() runs only after this class requires wp-settings.php, so core is fair game.
  */
 class SFile_Cookie {
 
@@ -106,7 +113,7 @@ class SFile_Cookie {
 		$expire   = time() + $valid_minutes * 60;
 
 		$domain   = '';
-		$secure   = is_ssl();
+		$secure   = self::is_secure_request();
 		$samesite = 'Strict';
 		$path     = '/';
 
@@ -344,12 +351,33 @@ class SFile_Cookie {
 				array(
 					'expires'  => time() - 3600,
 					'path'     => '/',
-					'secure'   => is_ssl(),
+					'secure'   => self::is_secure_request(),
 					'httponly' => true,
 					'samesite' => 'Strict',
 				)
 			);
 		}
+	}
+
+	/**
+	 * Whether the current request is over HTTPS.
+	 *
+	 * A copy of WordPress' is_ssl(), which does not exist on the fast path (see class
+	 * docblock). Deliberately does not delegate to is_ssl() when core happens to be
+	 * loaded: cookies are set on one path and cleared on the other, so both must agree
+	 * on "secure" even if this copy and core ever drift apart.
+	 *
+	 * @return bool
+	 */
+	private static function is_secure_request() {
+		if ( isset( $_SERVER['HTTPS'] ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- compared against literals.
+			$https = strtolower( $_SERVER['HTTPS'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+			return 'on' === $https || '1' === (string) $https;
+		}
+		if ( isset( $_SERVER['SERVER_PORT'] ) ) {
+			return '443' === (string) $_SERVER['SERVER_PORT']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- compared against a literal.
+		}
+		return false;
 	}
 
 	/**
