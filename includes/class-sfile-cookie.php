@@ -344,7 +344,7 @@ class SFile_Cookie {
 				array(
 					'expires'  => time() - 3600,
 					'path'     => '/',
-					'secure'   => true,
+					'secure'   => is_ssl(),
 					'httponly' => true,
 					'samesite' => 'Strict',
 				)
